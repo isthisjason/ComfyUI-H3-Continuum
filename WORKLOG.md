@@ -2031,3 +2031,13 @@ Added a non-empty public-wrapper test selecting Video 2 and Video 2 Audio while 
 The user reports manual ComfyUI acceptance passed for image-only references, standalone audio references, video references, paired video soundtrack selection, multiple image and standalone audio references, three-speaker voice/reference binding, and multiple camera cuts across a long Continuum sequence. This is user-reported acceptance; workflow/model/settings, media, dimensions, duration, and timing evidence were not supplied for an independently reproducible GPU gate.
 
 User authorized committing and pushing the standalone adapter milestone on `feature/fantastic-media-loader`, with no merge or next feature. Pre-commit focused regressions: 43 passed / 1 skipped in 9.51 seconds; both manifests verified and git diff --check passed. Scope remains the 13 adapter-related files, with no workflow JSON or production sampler changes.
+
+## V3.9 resolution-mode/aspect extension — local implementation
+
+Extended only V3.9 aspect/source dropdown choices while preserving widget order, legacy strings/defaults, and both historical Auto fallbacks. Factored preset selection around shared numeric-ratio math; V3.8 retains its resolver and migration. Added a V3.9 frontend branch with non-serialized resolved-size/actual-MP display and non-mutating loading/preview, plus full ratio/runtime/frontend parity coverage and usage documentation.
+
+Validation: 190 passed / 2 skipped initial resolution/schema suite; 686 passed / 8 skipped / 4 deselected broader V3.8/V3.9/public/adapter suite (12.06s). Six skipped existing Node tests passed unchanged on Linux; new frontend/backend matrix 110 cases (12 pending); review 48/48; reference-image UI PASS. Remaining Core-cache skip is its configured runtime path. Standard syntax/native PackedLayout/13 registrations PASS; manifests 421/146 and diff check PASS. No Fantastic/workflow/Second Pass/interpolation changes. Browser/GPU acceptance remains separate; no commit or push.
+
+## V3.9 resolution standalone feature milestone
+
+The user reports manual ComfyUI acceptance passed and authorized a separate `feat: expand V3.9 resolution modes` commit, without push or merge. Pre-commit focused resolution/schema tests: 125 passed / 1 skipped / 4 existing deprecation warnings in 10.00s. The skipped frontend check was run under Linux: 110 frontend/backend cases passed, including 12 pending-geometry cases. Both manifests verified (421 source / 146 registry); diff check passed. No workflow JSON, Fantastic implementation, Second Pass, or interpolation files are included. Branch reorganization remains future work.

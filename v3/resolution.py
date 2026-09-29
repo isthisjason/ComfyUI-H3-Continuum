@@ -27,6 +27,23 @@ H3_SIZE_SOURCE_OPTIONS = (
     H3_SIZE_SOURCE_LEGACY,
 )
 
+# V3.9 extends stored choices without broadening V3.8's schema or fallback.
+H3_V39_MP_MODE = "Megapixel + Aspect Ratio"
+H3_V39_ASPECT_RATIOS = {
+    H3_ASPECT_SQUARE: 1.0,
+    "4:3": 4 / 3,
+    "3:2": 3 / 2,
+    "16:10": 16 / 10,
+    H3_ASPECT_LANDSCAPE: 16 / 9,
+    "21:9": 21 / 9,
+    "3:4": 3 / 4,
+    "2:3": 2 / 3,
+    "10:16": 10 / 16,
+    H3_ASPECT_PORTRAIT: 9 / 16,
+}
+H3_V39_ASPECT_OPTIONS = (H3_ASPECT_AUTO, *H3_V39_ASPECT_RATIOS)
+H3_V39_SIZE_SOURCE_OPTIONS = (*H3_SIZE_SOURCE_OPTIONS, H3_V39_MP_MODE)
+
 H3_PRESET_DRAFT = "Draft — 0.30 MP"
 H3_PRESET_BALANCED = "Balanced — 0.60 MP"
 H3_PRESET_NATIVE = "Native 768"
@@ -165,6 +182,17 @@ def resolve_h3_resolution(
     """Resolve decimal-MP or Native 768 dimensions on the H3 32-pixel grid."""
 
     aspect_ratio, aspect_source = resolve_h3_aspect(aspect, first_frame)
+    return resolve_h3_numeric_resolution(
+        aspect_ratio=aspect_ratio, aspect_source=aspect_source,
+        preset=preset, custom_mp=custom_mp,
+    )
+
+
+def resolve_h3_numeric_resolution(
+    *, aspect_ratio: float, aspect_source: str, preset: str,
+    custom_mp: float = H3_CUSTOM_MP_DEFAULT,
+) -> H3ResolutionPlan:
+    """One preset implementation for legacy and V3.9 numeric aspect policies."""
     warnings: list[str] = []
     target_mp: float | None
     if preset == H3_PRESET_DRAFT:
@@ -245,4 +273,32 @@ def resolve_h3_size_source(
         preset=preset,
         custom_mp=custom_mp,
         first_frame=first_frame,
+    )
+
+
+def resolve_h3_v39_size_source(
+    *, size_source: str, width: Any = H3_MANUAL_WIDTH_DEFAULT,
+    height: Any = H3_MANUAL_HEIGHT_DEFAULT, aspect: str = H3_ASPECT_AUTO,
+    preset: str = H3_PRESET_DRAFT, custom_mp: float = H3_CUSTOM_MP_DEFAULT,
+    first_frame: Any = None,
+) -> H3ResolutionPlan:
+    """Retain legacy source semantics; only the new mode uses extended ratios."""
+    if size_source != H3_V39_MP_MODE:
+        return resolve_h3_size_source(
+            size_source=size_source, width=width, height=height, aspect=aspect,
+            preset=preset, custom_mp=custom_mp, first_frame=first_frame,
+        )
+    if aspect == H3_ASPECT_AUTO:
+        # New Auto follows First Image's manual fallback, not legacy Auto's 16:9.
+        return resolve_h3_size_source(
+            size_source=H3_SIZE_SOURCE_FIRST_IMAGE, width=width, height=height,
+            preset=preset, custom_mp=custom_mp, first_frame=first_frame,
+        )
+    ratio = H3_V39_ASPECT_RATIOS.get(aspect)
+    if ratio is None:
+        ratio, source = resolve_h3_aspect(aspect, first_frame)
+    else:
+        source = aspect
+    return resolve_h3_numeric_resolution(
+        aspect_ratio=ratio, aspect_source=source, preset=preset, custom_mp=custom_mp,
     )

@@ -48,7 +48,15 @@ def test_v39_has_one_typed_reference_input_and_v38_is_unchanged():
     )
     old = driving_nodes.H3ContinuumSamplerV38.INPUT_TYPES()
     new = driving_nodes.H3ContinuumSamplerV39.INPUT_TYPES()
-    assert new["required"] == old["required"]
+    assert list(new["required"]) == list(old["required"])
+    assert {k: v for k, v in new["required"].items() if k not in {"aspect", "size_source"}} == {
+        k: v for k, v in old["required"].items() if k not in {"aspect", "size_source"}
+    }
+    from ComfyUI_H3_Continuum_Join.v3.resolution import H3_V39_ASPECT_OPTIONS, H3_V39_SIZE_SOURCE_OPTIONS
+    assert new["required"]["aspect"][0] == H3_V39_ASPECT_OPTIONS
+    assert new["required"]["size_source"][0] == H3_V39_SIZE_SOURCE_OPTIONS
+    for key in ("aspect", "size_source"):
+        assert new["required"][key][1]["default"] == old["required"][key][1]["default"]
     assert "reference_routing_mode" not in new["required"]
     assert not any(f"reference_r{index}_chunks" in new["required"]
                    for index in range(1, 10))

@@ -774,9 +774,10 @@ function readySummary(node) {
     const duration = linkedInput(node, [CHUNKS_WIDGET, "chunk_seconds"])
         ? "Duration from connected inputs"
         : `${compactValue(chunks)} × ${compactValue(seconds)}s = ${durationLabel(node)}`;
-    const output = sizeSource === SIZE_SOURCE_FIRST_IMAGE
-        ? "First Image"
-        : `Manual ${frameSizeLabel(width, height)}`;
+    const output = node.comfyClass === V39_NODE_CLASS
+        ? (sizeSource === SIZE_SOURCE_MANUAL ? `Manual ${frameSizeLabel(width, height)}`
+            : `${V39_MP_MODE} • ${v39AspectLabel(node)}`)
+        : sizeSource === SIZE_SOURCE_FIRST_IMAGE ? "First Image" : `Manual ${frameSizeLabel(width, height)}`;
     return {
         headline: "Ready to Queue",
         detail: `${duration} • ${output}${reviewing ? " • Review each chunk" : ""}`,
@@ -1006,6 +1007,8 @@ function moveNamedWidgetsToFront(node, orderedNames) {
 
 function configureIntuitiveV38Ux(node) {
     if (!isModernSamplerClass(node.comfyClass) || typeof node.addWidget !== "function") return;
+    const isV39 = node.comfyClass === V39_NODE_CLASS;
+    const sizeFacadeName = isV39 ? "Resolution Mode" : FACADE_SIZE_SOURCE_WIDGET;
     const sourceOptions = (name) => {
         const widget = name === "control_after_generate"
             ? baseSeedControlWidget(node)
@@ -1083,10 +1086,28 @@ function configureIntuitiveV38Ux(node) {
 
     const outputFacade = addFacadeProxyWidget(node, {
         type: "combo",
-        name: FACADE_SIZE_SOURCE_WIDGET,
+        name: sizeFacadeName,
         sourceName: SIZE_SOURCE_WIDGET,
-        options: { values: [SIZE_SOURCE_FIRST_IMAGE, SIZE_SOURCE_MANUAL] },
+        options: { values: isV39 ? [V39_MP_MODE, V39_MANUAL_MODE] : [SIZE_SOURCE_FIRST_IMAGE, SIZE_SOURCE_MANUAL] },
+        fromSource: isV39 ? (value) => value === SIZE_SOURCE_MANUAL ? V39_MANUAL_MODE : V39_MP_MODE : (value) => value,
+        onSet: isV39 ? (value, source) => setExistingWidgetValue(source,
+            value === V39_MANUAL_MODE ? SIZE_SOURCE_MANUAL : V39_MP_MODE) : null,
     });
+
+    if (isV39) {
+        addFacadeProxyWidget(node, {
+            type: "combo", name: "Aspect Ratio", sourceName: LEGACY_ASPECT_WIDGET,
+            options: { values: Object.values(V39_ASPECT_LABELS) },
+            fromSource: () => v39AspectLabel(node),
+            onSet: (label, source) => {
+                const stored = Object.keys(V39_ASPECT_LABELS).find((key) => V39_ASPECT_LABELS[key] === label);
+                if (stored === undefined) return;
+                setExistingWidgetValue(source, stored);
+                setExistingWidgetValue(findWidget(node, SIZE_SOURCE_WIDGET), V39_MP_MODE);
+            },
+        });
+        addFacadeInfoWidget(node, "Resolved Size", "resolution", 62);
+    }
 
     const qualityFacade = addFacadeProxyWidget(node, {
         type: "combo",
@@ -1208,7 +1229,8 @@ function configureIntuitiveV38Ux(node) {
         FACADE_CHUNKS_WIDGET,
         FACADE_SECONDS_WIDGET,
         FACADE_TOTAL_LENGTH_WIDGET,
-        FACADE_SIZE_SOURCE_WIDGET,
+        sizeFacadeName,
+        ...(isV39 ? ["Aspect Ratio", "Resolved Size"] : []),
         FACADE_RESOLUTION_WIDGET,
         FACADE_CUSTOM_MP_WIDGET,
         FACADE_WIDTH_WIDGET,
@@ -1346,6 +1368,7 @@ function configureIntuitiveV38Ux(node) {
         setWidgetVisible(findWidget(node, LEGACY_RUN_NAME_WIDGET), advanced && storageEnabled);
         setWidgetVisible(findWidget(node, REROLL_NONCE_WIDGET), advanced && explicitRegeneration);
         applyV38WidgetHelp(node);
+        if (isV39) refreshV39ResolutionFacade(node);
         // This is the appended native widget, not another transient proxy.
         // Core persists its value; visibility never changes the saved mode.
         const videoMode = findWidget(node, "video_reference_mode");
@@ -2860,6 +2883,101 @@ function configureConditionalWidgets(node) {
     refresh();
 }
 
+
+const V39_MP_MODE = "Megapixel + Aspect Ratio";
+const V39_MANUAL_MODE = "Manual Width × Height";
+const V39_ASPECT_LABELS = {
+    "Auto from First Image": "Auto / First Image",
+    "Square 1:1": "1:1", "4:3": "4:3", "3:2": "3:2", "16:10": "16:10",
+    "Landscape 16:9": "16:9", "21:9": "21:9", "3:4": "3:4",
+    "2:3": "2:3", "10:16": "10:16", "Portrait 9:16": "9:16",
+};
+const V39_RESOLUTION_HELP = "Fixed ratios ignore First Image geometry; First Image preprocessing may stretch when ratios differ. 32-pixel rounding can slightly alter the requested ratio. Older plugin versions may not understand new V3.9 aspect/mode values.";
+
+function v39AspectLabel(node) {
+    const source = findWidget(node, SIZE_SOURCE_WIDGET)?.value;
+    return source === SIZE_SOURCE_FIRST_IMAGE ? "Auto / First Image"
+        : V39_ASPECT_LABELS[findWidget(node, LEGACY_ASPECT_WIDGET)?.value] || "16:9";
+}
+
+function configureV39ResolutionWidgets(node, presetSize, firstImageGeometry) {
+    // Presentation never migrates persisted values: legacy Auto has a different
+    // missing-image fallback, and manual dimensions are also saved fallback data.
+    const read = (name) => findWidget(node, name)?.value;
+    node.__h3ContinuumResolutionPreview = () => {
+        const source = read(SIZE_SOURCE_WIDGET);
+        const aspect = v39AspectLabel(node);
+        let dimensions;
+        if (source === SIZE_SOURCE_MANUAL) {
+            dimensions = [Number(read(WIDTH_WIDGET)), Number(read(HEIGHT_WIDGET))];
+        } else if (aspect === "Auto / First Image") {
+            const geometry = firstImageGeometry();
+            if (!geometry) return { aspect, pending: true };
+            dimensions = presetSize(geometry.width / geometry.height);
+        } else {
+            // Old Legacy Aspect accepts only its original three fixed ratios.
+            const stored = read(LEGACY_ASPECT_WIDGET);
+            const label = source !== V39_MP_MODE
+                && !["Square 1:1", "Landscape 16:9", "Portrait 9:16"].includes(stored)
+                ? "16:9" : aspect;
+            const [width, height] = label.split(":").map(Number);
+            dimensions = presetSize(width / height);
+        }
+        const [width, height] = dimensions;
+        return { aspect, width, height, actualMP: width * height / 1_000_000, pending: false };
+    };
+    const refresh = () => {
+        hidePersistentWidget(findWidget(node, LEGACY_ASPECT_WIDGET));
+        node.__h3ContinuumIntuitiveUxRefresh?.();
+        node.setDirtyCanvas?.(true, true);
+    };
+    for (const name of [SIZE_SOURCE_WIDGET, LEGACY_ASPECT_WIDGET, RESOLUTION_PRESET_WIDGET,
+        CUSTOM_MP_WIDGET, WIDTH_WIDGET, HEIGHT_WIDGET]) {
+        attachRefresh(findWidget(node, name), "__h3V39ResolutionRefresh", refresh);
+    }
+    if (!node.__h3V39ResolutionConfigure) {
+        const configure = node.configure;
+        node.configure = function(...args) {
+            const result = configure?.apply(this, args);
+            refresh();
+            return result;
+        };
+        node.__h3V39ResolutionConfigure = true;
+    }
+    node.__h3ContinuumResolutionUxRefresh = refresh;
+    refresh();
+}
+
+function refreshV39ResolutionFacade(node) {
+    const manual = findWidget(node, SIZE_SOURCE_WIDGET)?.value === SIZE_SOURCE_MANUAL;
+    const aspect = findWidget(node, "Aspect Ratio");
+    if (aspect) aspect.value = v39AspectLabel(node);
+    setWidgetVisible(aspect, !manual);
+    const mode = findWidget(node, "Resolution Mode");
+    if (mode) mode.value = manual ? V39_MANUAL_MODE : V39_MP_MODE;
+    const preset = findWidget(node, FACADE_RESOLUTION_WIDGET);
+    const custom = findWidget(node, FACADE_CUSTOM_MP_WIDGET);
+    setWidgetVisible(preset, !manual);
+    setWidgetVisible(custom, !manual && findWidget(node, RESOLUTION_PRESET_WIDGET)?.value === CUSTOM_RESOLUTION_PRESET);
+    for (const name of [FACADE_WIDTH_WIDGET, FACADE_HEIGHT_WIDGET]) {
+        setWidgetVisible(findWidget(node, name), manual);
+    }
+    const preview = node.__h3ContinuumResolutionPreview?.();
+    const display = findWidget(node, "Resolved Size");
+    if (display && preview) {
+        display.headline = manual ? "Manual Width × Height" : `Aspect Ratio: ${preview.aspect}`;
+        display.detail = preview.pending ? "Pending / unknown — First Image geometry unavailable"
+            : `${preview.width} × ${preview.height} • ${preview.actualMP.toFixed(6)} MP`;
+        display.value = `${display.headline}\n${display.detail}`;
+    }
+    for (const widget of [aspect, preset, custom, display]) setWidgetTooltip(widget, V39_RESOLUTION_HELP);
+    const source = findWidget(node, SIZE_SOURCE_WIDGET)?.value;
+    setWidgetTooltip(mode, "Manual preserves exact saved Width/Height. Auto uses First Image aspect, not its native dimensions. "
+        + (source === SIZE_SOURCE_LEGACY ? "Saved Legacy Auto falls back to a 16:9 preset when First Image is missing. "
+            : "Auto falls back to saved manual dimensions when First Image is missing. ")
+        + V39_RESOLUTION_HELP);
+}
+
 function configureResolutionPresetWidgets(node) {
     if (!isModernSamplerClass(node.comfyClass)) {
         return;
@@ -2913,6 +3031,10 @@ function configureResolutionPresetWidgets(node) {
         const height = Number(image?.naturalHeight || image?.height || 0);
         return width > 0 && height > 0 ? { width, height } : null;
     };
+    if (node.comfyClass === V39_NODE_CLASS) {
+        configureV39ResolutionWidgets(node, presetSize, firstImageGeometry);
+        return;
+    }
     const migrateLegacyAspect = () => {
         if (sizeSourceWidget.value !== SIZE_SOURCE_LEGACY) return;
         const legacy = String(aspectWidget?.value || "Auto from First Image");

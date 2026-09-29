@@ -10,6 +10,8 @@
 
 Connect Fantastic H3_REFS through **H3 Continuum Fantastic Media Adapter**. See the [wiring and compatibility guide](docs/FANTASTIC_MEDIA_LOADER.md). Existing workflows remain unchanged.
 
+V3.9 now offers **Megapixel + Aspect Ratio** and **Manual Width × Height**, including first-class 3:2 and ultrawide ratios. See [resolution controls and saved-workflow compatibility](docs/V39_RESOLUTION_MODES.md).
+
 ## Start here: V3.9 and the retained V3.8X2 workflow
 
 The ComfyUI **Templates → ComfyUI-H3-Continuum** gallery offers two separate entries: the user-selected [V3.9 workflow](examples/workflows/MiniMax_H3_Continuum_V39.json) and [V3.8X2 workflow](examples/workflows/MiniMax_H3_Continuum_V38X2.json). The [V3.8X2 workflow ZIP](examples/workflows/MiniMax_H3_Continuum_V38X2.zip) contains **both unchanged JSON workflows** for one-download setup; the [V3.9 ZIP](examples/workflows/MiniMax_H3_Continuum_V39.zip) contains only V3.9. These are workflow archives, not custom-node installers. The V3.8 Sampler remains available, so existing V3.8X2 workflows still load. V3.9 does not automatically convert their Reference connections or saved Runs/Takes: preserve the old workflow and open the dedicated V3.9 graph for new work.

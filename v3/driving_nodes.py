@@ -78,6 +78,9 @@ from .resolution import (
     H3_SIZE_SOURCE_LEGACY,
     H3_SIZE_SOURCE_OPTIONS,
     resolve_h3_size_source,
+    resolve_h3_v39_size_source,
+    H3_V39_ASPECT_OPTIONS,
+    H3_V39_SIZE_SOURCE_OPTIONS,
 )
 from .reliability_v38 import append_v38_status, build_v38_diagnostics
 from .review_control import (
@@ -533,6 +536,9 @@ class H3ContinuumSamplerV37(H3ContinuumSamplerV36):
 class H3ContinuumSamplerV38(H3ContinuumSamplerV37):
     """V3.7 Production facade with the shared H3 resolution preset UI."""
 
+    # Virtual policy hook: V3.8 keeps its exact existing resolver.
+    _resolve_resolution = staticmethod(resolve_h3_size_source)
+
     DEPRECATED = False
     CATEGORY = CONTINUUM_CATEGORY
     DESCRIPTION = (
@@ -765,7 +771,7 @@ class H3ContinuumSamplerV38(H3ContinuumSamplerV37):
         height=H3_MANUAL_HEIGHT_DEFAULT,
         **kwargs,
     ):
-        resolution = resolve_h3_size_source(
+        resolution = self._resolve_resolution(
             size_source=size_source,
             width=width,
             height=height,
@@ -808,6 +814,8 @@ class H3ContinuumSamplerV38(H3ContinuumSamplerV37):
 class H3ContinuumSamplerV39(H3ContinuumSamplerV38):
     """Single nine-image input using the existing group-local routing engine."""
 
+    _resolve_resolution = staticmethod(resolve_h3_v39_size_source)
+
     DESCRIPTION = (
         "H3 Continuum V3.9. Connect Reference Images V3.9 to assign fixed "
         "images 1–9 to all chunks or selected chunks."
@@ -818,6 +826,20 @@ class H3ContinuumSamplerV39(H3ContinuumSamplerV38):
     def INPUT_TYPES(cls):
         schema = super().INPUT_TYPES()
         schema["required"] = dict(schema["required"])
+        # Replace definitions in place: no serialized widget is inserted or moved.
+        aspect_options = dict(schema["required"]["aspect"][1])
+        aspect_options.update(display_name="Aspect Ratio", tooltip=(
+            "V3.9 preset aspect. Fixed ratios ignore First Image geometry; First Image "
+            "may stretch if its ratio differs. 32-pixel rounding may alter the ratio slightly. "
+            "Older plugin versions may not understand new aspect/mode values."
+        ))
+        schema["required"]["aspect"] = (H3_V39_ASPECT_OPTIONS, aspect_options)
+        mode_options = dict(schema["required"]["size_source"][1])
+        mode_options.update(display_name="Resolution Mode", tooltip=(
+            "Megapixel + Aspect Ratio uses the selected preset and aspect. Manual uses "
+            "exact Width/Height. First Image and Legacy Aspect retain saved-workflow semantics."
+        ))
+        schema["required"]["size_source"] = (H3_V39_SIZE_SOURCE_OPTIONS, mode_options)
         optional = dict(schema["optional"])
         for index in range(1, 4):
             optional.pop(f"reference_image_{index}", None)
