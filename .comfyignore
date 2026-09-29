@@ -63,3 +63,5 @@ examples/workflows/*
 !docs/TIMELINE_VIDEO_EXPERIMENTAL.md
 !docs/V39_REFERENCE_INLINE.md
 .h3-timeline-experimental.json
+
+!docs/FANTASTIC_MEDIA_LOADER.md

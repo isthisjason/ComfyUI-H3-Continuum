@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DISPLAY_NAMES = {
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
+    "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",
     "H3ContinuumReferenceAudios": "H3 Continuum Reference Audios",
     "H3ContinuumAssembleSeamV35": "H3 Continuum Finalize",
     "H3EasyLoadImage": "H3 Continuum Load Image",

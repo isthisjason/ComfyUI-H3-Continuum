@@ -2015,3 +2015,19 @@ D:\Codex\_snapshots\ComfyUI-H3-Continuum\pre-rollback-after-00038-fail-20260821_
 - Snapshotted the authoritative ComfyUI_W source (635 files) before the version/documentation update. Kept the user's official V3.9 JSON byte-identical and retained the separate V3.8X2 Sampler, workflow JSON and historical GitHub Releases.
 - Bumped package metadata to 3.9.0, made README EN/JA and install/package guidance V3.9-first, retained V3.8X2 compatibility and both Templates, and reconciled the accepted Timeline Video Experimental documentation from the existing main branch. Updated integrity manifests and release-metadata tests.
 - Full Windows CPU suite passed `1536 passed / 1 skipped / 0 failed`; `git diff --check` passed. This GitHub main-source publication does not create a tag, new Release, Registry package or new GPU run. Default V3.9 template browser save/reload and GPU acceptance remain pending.
+
+## 2026-09-29 — Fantastic decoded H3_REFS adapter (local, uncommitted)
+
+Added reusable conversion, the public `H3ContinuumFantasticMediaAdapter`, dictionary-boundary regression tests, wiring documentation, registration verification, and manifest entries. Effective picture slots map to the existing V3.9 All-chunks bundle; standalone audio preserves its safe contiguous prefix and source rates; video/driving audio require explicit selection. No Fantastic imports/decoding/mutation, sampler changes, workflow edits, or publication. Snapshots: `/tmp/h3-continuum-snapshots`, initial `pre-fantastic-adapter-20260929_122052`.
+
+Validation: focused `65 passed / 1 skipped`; isolated timeline/identity `50 passed`; Linux Node review `48/48` and V3.9 image UI PASS; standard validation script syntax/native PackedLayout/13-node registration PASS. Full Windows attempt: `1534 passed / 20 skipped / 4 failed / 4 errors` (two process-global CUDA-purity assertions pass in isolation; six frontend failures/errors require Windows Node.js). No GPU/browser acceptance claimed. `audio_vae` uses existing Core `VAE` socket rather than introducing AUDIO_VAE. Existing missing-VAE validation is reused.
+
+## 2026-09-29 - Fantastic adapter review test gaps
+
+Added a non-empty public-wrapper test selecting Video 2 and Video 2 Audio while verifying the exact supplied Audio VAE reaches the existing reference-audio bundle. Strengthened immutability coverage to retain and assert the original waveform tensor identity alongside audio-dict identity, contents, and sample rate. Updated only the test source-manifest hash; production code is unchanged. Adapter, public-surface, V3.9 schema, and public API tests: 43 passed / 1 skipped (Windows Node.js unavailable), 7.24 seconds. Both manifests match; git diff --check passed. No commit or push.
+
+## Fantastic adapter manual acceptance and feature milestone
+
+The user reports manual ComfyUI acceptance passed for image-only references, standalone audio references, video references, paired video soundtrack selection, multiple image and standalone audio references, three-speaker voice/reference binding, and multiple camera cuts across a long Continuum sequence. This is user-reported acceptance; workflow/model/settings, media, dimensions, duration, and timing evidence were not supplied for an independently reproducible GPU gate.
+
+User authorized committing and pushing the standalone adapter milestone on `feature/fantastic-media-loader`, with no merge or next feature. Pre-commit focused regressions: 43 passed / 1 skipped in 9.51 seconds; both manifests verified and git diff --check passed. Scope remains the 13 adapter-related files, with no workflow JSON or production sampler changes.

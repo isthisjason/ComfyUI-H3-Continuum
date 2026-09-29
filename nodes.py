@@ -452,6 +452,10 @@ from .v3.video_adapter_nodes import H3ContinuumVideoAdapter
 
 NODE_CLASS_MAPPINGS["H3ContinuumVideoAdapter"] = H3ContinuumVideoAdapter
 
+from .v3.fantastic_adapter_nodes import H3ContinuumFantasticMediaAdapter
+
+NODE_CLASS_MAPPINGS["H3ContinuumFantasticMediaAdapter"] = H3ContinuumFantasticMediaAdapter
+
 from .decode_cache.nodes import H3DecodeCacheHelper
 
 NODE_CLASS_MAPPINGS["H3DecodeCacheHelper"] = H3DecodeCacheHelper
@@ -463,6 +467,7 @@ NODE_DISPLAY_NAME_MAPPINGS["H3DecodeCacheHelper"] = "Decode Cache Helper"
 _PUBLIC_NODE_DISPLAY_NAMES = {
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
+    "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",
     "H3ContinuumReferenceAudios": "H3 Continuum Reference Audios",
     "H3ContinuumReferenceImages": "H3 Continuum Reference Images",
     "H3ContinuumReferenceImagesV39": "H3 Continuum Reference Images V3.9",

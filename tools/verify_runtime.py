@@ -11,6 +11,7 @@ from pathlib import Path
 EXPECTED_PUBLIC_NODE_DISPLAY_NAMES = {
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
+    "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",
     "H3ContinuumReferenceAudios": "H3 Continuum Reference Audios",
     "H3ContinuumReferenceImages": "H3 Continuum Reference Images",
     "H3ContinuumReferenceImagesV39": "H3 Continuum Reference Images V3.9",

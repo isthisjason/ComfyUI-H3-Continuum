@@ -1,5 +1,19 @@
 # Project State
 
+## Fantastic adapter standalone feature milestone
+
+- The user reports manual ComfyUI acceptance passed for image-only references, standalone audio references, video references, paired video soundtrack selection, multiple image and standalone audio references, three-speaker voice/reference binding, and multiple camera cuts across a long Continuum sequence. This is user-reported acceptance; workflow/model/settings, media, dimensions, duration, and timing evidence were not supplied for an independently reproducible GPU gate.
+- Authorized milestone branch: `feature/fantastic-media-loader`; commit message: `feat: add Fantastic H3 media adapter`. No workflow JSON changes or merge.
+- Pre-commit adapter/public-surface/schema/API suite: `43 passed / 1 skipped` (Windows Node.js unavailable), 9.51 seconds. Earlier full-suite limitations remain documented below; this milestone does not claim a new full-suite or independently run GPU gate.
+
+## Fantastic H3_REFS adapter — local implementation (2026-09-29)
+
+- Added `H3ContinuumFantasticMediaAdapter` / **H3 Continuum Fantastic Media Adapter**; public exports now total 13. Changes are confined to this user-selected portable checkout. Fantastic, existing sampler schemas/runtime, and workflow JSONs are unchanged; no commit or publication.
+- The reusable `fantastic_refs.py` consumes effective decoded dictionary slots without importing Fantastic or requiring `items`. Images use the existing nine-slot V3.9 All-chunks bundle. Standalone audio uses the existing contiguous-prefix helper and `VAE` socket, with diagnostic omissions after gaps. Video/driving selection defaults to None; paired soundtracks are explicit driving choices only. Guide: `docs/FANTASTIC_MEDIA_LOADER.md`.
+- Validation: adapter/public-schema/audio suite `65 passed / 1 skipped`; isolated timeline/identity suite `50 passed`; Linux Node review lifecycle `48/48` and V3.9 image UI contract PASS. `tools/validate.ps1 -Python ..\..\..\python_embeded\python.exe -ComfyRoot ..\.. -SkipTests` passed syntax, native PackedLayout (48 rows / 18 reference-audio rows), and all 13 registrations.
+- Full portable-Windows suite was attempted: `1534 passed / 20 skipped / 4 failed / 4 errors`. Two failures assert no CUDA initialization after native registration imports (both pass in isolation); remaining failures/errors require Node.js unavailable on Windows PATH. Setting ComfyUI CPU mode did not avoid all import-time CUDA initialization. This is not a full-suite PASS. Browser wiring and GPU sampling were not run.
+- Pre-edit snapshots used `tools/snapshot.ps1` against this exact checkout, stored at `/tmp/h3-continuum-snapshots` (initial `pre-fantastic-adapter-20260929_122052`). Repeated snapshots preceded subsequent edit batches. Historical source/runtime paths elsewhere in this file were not edited or deployed to.
+
 ## V3.9.0 main-source publication (2026-09-29)
 
 - The authoritative ComfyUI_W worktree was snapshotted before publication to `D:\Codex\_snapshots\ComfyUI-H3-Continuum\pre-v39-main-publication-20260929-20260929_010140` (635 files). The user-selected Workflow (4) remains byte-identical to the supplied JSON (SHA-256 `40199D2500174BA51C040D6983F88D74C4BFBAF19191E728818E6B969B869B0F`). V3.8X2's official JSON and Sampler remain separate.
