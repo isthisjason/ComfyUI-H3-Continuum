@@ -335,7 +335,21 @@ def validate_refine_context(
         if int(assembly_plan.get("width", 0)) != int(context["source_width"]) or int(
             assembly_plan.get("height", 0)
         ) != int(context["source_height"]):
-            raise RefineContextError("refine context source dimensions differ from assembly plan")
+            # Second Pass records source and target separately. The same captured
+            # context remains valid after spatial refinement updates output size.
+            geometry = assembly_plan.get("second_pass_contract") or {}
+            sources = geometry.get("physical_groups") or ()
+            target_matches = (
+                geometry.get("target_width") == assembly_plan.get("width")
+                and geometry.get("target_height") == assembly_plan.get("height")
+            )
+            source_matches = sources and all(
+                group.get("source_width") == context["source_width"]
+                and group.get("source_height") == context["source_height"]
+                for group in sources
+            )
+            if not target_matches or not source_matches:
+                raise RefineContextError("refine context source dimensions differ from assembly plan")
         contract = assembly_plan.get("second_pass_contract")
         plan_groups = contract.get("physical_groups") if isinstance(contract, Mapping) else None
         if not isinstance(plan_groups, Sequence):

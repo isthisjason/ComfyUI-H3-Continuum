@@ -1,5 +1,10 @@
 # Project State
 
+## Group-aware Audio Refine — local implementation
+
+- Added public `H3ContinuumAudioRefineV39`, reusing selective Audio Only group execution, context reconstruction, Core AV packing, and plan geometry updates. Final video objects remain unchanged; zero denoise bypasses sampling. No AudioRefine dependency, sampler schema change, workflow edit, or external runtime deployment. Public exports now total 14.
+- Validation: 267 relevant tests passed / 2 skipped; syntax, native PackedLayout, and all 14 public registrations passed. Audio-targeted runtime remains Experimental / Production HOLD; browser/GPU and upstream FrozenVideoCache acceptance are pending. Local Audio Refine commit authorized; no push or publication. Native Core Euler/normal CPU smoke executes six solver steps across two groups with a synthetic denoiser; video objects stay identical and audio changes. Shared refine-context repair accepts recorded source/target geometry after spatial Second Pass.
+
 ## V3.9 resolution modes and aspect ratios — accepted feature milestone
 
 - V3.9 now presents Megapixel + Aspect Ratio / Manual Width × Height, with ordered Auto, 1:1, 4:3, 3:2, 16:10, 16:9, 21:9, 3:4, 2:3, 10:16, 9:16 choices. Only the existing V3.9 aspect/source dropdown definitions extend; stored legacy strings, defaults, widget positions, V3.8 schema, and old resolver behavior are preserved. Shared numeric-ratio preset math uses the unchanged area/Native/32-grid calculations.

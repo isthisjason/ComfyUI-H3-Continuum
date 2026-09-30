@@ -1434,3 +1434,27 @@ Validation results apply to the tested local source and environment. They do not
 ## License
 
 See [LICENSE](LICENSE).
+# Audio refinement after video detail refinement
+
+**H3 Continuum Audio Refine** (`H3ContinuumAudioRefineV39`, Advanced) accepts the
+final grouped video latents, matching audio latents, assembly plan, MODEL and CLIP.
+Use: first pass → external latent upscale → video Second Pass → Audio Refine →
+Decode → Finalize/Seam → external RIFE/RTX processing. No workflow templates are changed.
+
+Every physical group is refined once in order, including terminal-merged groups.
+Video noise/mask are zero and the input video LATENT objects are returned unchanged;
+audio uses seeded noise with an active mask. Spatially upscaled video is retained,
+and output plan geometry follows it without changing temporal indices. Connect
+`refine_context` and, when its image reconstruction needs encoding, `video_vae`.
+Missing/incomplete context follows Second Pass's diagnostic prompt-only fallback;
+corrupt typed context and incompatible group topology retain existing contract errors.
+
+Controls use Core sampler/scheduler and BasicGuider (no additional CFG). Seed has
+Core's control-after-generate menu. `audio_denoise=0` validates group alignment and
+returns exact audio/video passthrough without sampling or conditioning preparation.
+Upstream MODEL patches, including a compatible FrozenVideoCache, are accepted normally.
+AudioRefine is neither imported nor required. Audio-targeted sampling remains
+**Experimental / Production HOLD** pending browser/GPU acceptance; CPU tests do
+not prove frozen-context mask behavior in the installed H3 runtime. A native Core
+Euler/normal CPU smoke also executes the sampler factory and solver with a synthetic
+denoiser; checkpoint/GPU acceptance remains pending.

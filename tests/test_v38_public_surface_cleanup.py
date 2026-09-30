@@ -16,6 +16,7 @@ from ComfyUI_H3_Continuum_Join.v3 import second_pass_nodes
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DISPLAY_NAMES = {
+    "H3ContinuumAudioRefineV39": "H3 Continuum Audio Refine",
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
     "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",

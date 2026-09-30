@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 EXPECTED_PUBLIC_NODE_DISPLAY_NAMES = {
+    "H3ContinuumAudioRefineV39": "H3 Continuum Audio Refine",
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
     "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",

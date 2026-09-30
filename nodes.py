@@ -464,7 +464,12 @@ NODE_DISPLAY_NAME_MAPPINGS["H3DecodeCacheHelper"] = "Decode Cache Helper"
 # V3.8 exports only its audited launch surface. The imports and merged mappings
 # above intentionally stay in place because the V3.8 implementation still
 # inherits and reuses historical modules internally.
+from .v3.audio_refine_nodes import H3ContinuumAudioRefineV39
+
+NODE_CLASS_MAPPINGS["H3ContinuumAudioRefineV39"] = H3ContinuumAudioRefineV39
+
 _PUBLIC_NODE_DISPLAY_NAMES = {
+    "H3ContinuumAudioRefineV39": "H3 Continuum Audio Refine",
     "H3ContinuumSamplerV38": "H3 Continuum Sampler V3.8",
     "H3ContinuumSamplerV39": "H3 Continuum Sampler V3.9",
     "H3ContinuumFantasticMediaAdapter": "H3 Continuum Fantastic Media Adapter",
