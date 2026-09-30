@@ -107,10 +107,12 @@ class ReferenceVideoSource:
     target_height: int
     frame_count: int
     combined_hash: str
+    group_sources: tuple = ()
 
     @property
     def contract(self) -> dict[str, Any]:
         return {
+            **({"group_sources": [source.contract for source in self.group_sources]} if self.group_sources else {}),
             "reference_video_contract_version": REFERENCE_VIDEO_CONTRACT_VERSION,
             "source_shape": list(self.source_shape),
             "source_dtype": self.source_dtype,

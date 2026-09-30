@@ -130,6 +130,7 @@ class TimelineVideoSource:
     chunk_seconds: float
     chunk_contracts: tuple[dict[str, Any], ...]
     combined_hash: str
+    chunk_timing: object = None
 
     @property
     def contract(self) -> dict[str, Any]:
@@ -166,6 +167,7 @@ def prepare_timeline_video_source(
     output_width: int,
     output_height: int,
     size_mode: str,
+    chunk_timing=None,
 ) -> TimelineVideoSource:
     if video is None:
         raise TimelineVideoError("Timeline Video is required")
@@ -177,7 +179,7 @@ def prepare_timeline_video_source(
     chunks = int(chunks)
     chunk_seconds = float(chunk_seconds)
     duration = float(video.get_duration())
-    required_duration = chunks * chunk_seconds
+    required_duration = chunk_timing.total_seconds if chunk_timing is not None else chunks * chunk_seconds
     if duration + (1.0 / FPS) < required_duration:
         raise TimelineVideoError(
             f"Timeline Video is {duration:.3f}s, but {required_duration:.3f}s is required "
@@ -198,8 +200,8 @@ def prepare_timeline_video_source(
     for index in range(chunks):
         item = {
             "chunk_number": index + 1,
-            "start_seconds": round(index * chunk_seconds, 6),
-            "duration_seconds": round(chunk_seconds, 6),
+            "start_seconds": round(chunk_timing.cumulative_seconds[index] if chunk_timing is not None else index * chunk_seconds, 6),
+            "duration_seconds": round(chunk_timing.logical_chunk_seconds[index] if chunk_timing is not None else chunk_seconds, 6),
             "target_width": target_width,
             "target_height": target_height,
             "target_fps": FPS,
@@ -233,6 +235,7 @@ def prepare_timeline_video_source(
         chunk_seconds=chunk_seconds,
         chunk_contracts=tuple(chunk_contracts),
         combined_hash=combined_hash,
+        chunk_timing=chunk_timing,
     )
 
 
@@ -273,10 +276,11 @@ def encode_timeline_video_chunk(
     chunk_index = int(chunk_index)
     if chunk_index < 0 or chunk_index >= source.chunks:
         raise TimelineVideoError("Timeline Video chunk index is out of range")
-    start = chunk_index * source.chunk_seconds
+    start = source.chunk_timing.cumulative_seconds[chunk_index] if source.chunk_timing is not None else chunk_index * source.chunk_seconds
+    seconds = source.chunk_timing.logical_chunk_seconds[chunk_index] if source.chunk_timing is not None else source.chunk_seconds
     trimmed = source.video.as_trimmed(
         start_time=start,
-        duration=source.chunk_seconds,
+        duration=seconds,
         strict_duration=False,
     )
     if trimmed is None:
@@ -294,7 +298,7 @@ def encode_timeline_video_chunk(
     frames = frames[:, :, :, :3].detach().to(device="cpu", dtype=torch.float32)
     if not bool(torch.isfinite(frames).all()):
         raise TimelineVideoError("Timeline Video contains NaN or Inf pixels")
-    target_frames = align_frame_count_up(int(round(source.chunk_seconds * FPS)))
+    target_frames = align_frame_count_up(int(round(seconds * FPS)))
     indices = torch.linspace(
         0, int(frames.shape[0]) - 1, target_frames, dtype=torch.float64
     ).round().to(dtype=torch.long)

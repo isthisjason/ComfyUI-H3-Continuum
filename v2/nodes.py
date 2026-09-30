@@ -355,6 +355,7 @@ class H3ContinuumSamplerV2:
         if isinstance(seam_correction, bool):
             seam_correction = SEAM_CORRECTION_OFF
 
+        chunk_timing = clip_prompt_inputs.pop("_chunk_timing", None)
         prompt_plan = build_sampler_prompt_plan(
             prompt_mode=prompt_mode,
             prompt_script=prompt_script,
@@ -362,6 +363,7 @@ class H3ContinuumSamplerV2:
             prompt_plan=prompt_plan,
             chunks=int(chunks),
             chunk_seconds=float(chunk_seconds),
+            **({"chunk_timing": chunk_timing} if chunk_timing is not None else {}),
         )
         prompt_plan = apply_prompt_overrides(
             prompt_plan,
@@ -391,6 +393,7 @@ class H3ContinuumSamplerV2:
                     ),
                     chunks=int(chunks),
                     chunk_seconds=float(chunk_seconds),
+                    **({"logical_chunk_seconds": chunk_timing.logical_chunk_seconds} if chunk_timing is not None else {}),
                     prompt_hashes=list(prompt_plan["hashes"]),
                     timeline_video_source=timeline_video_source,
                 ),

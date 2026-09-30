@@ -1458,3 +1458,31 @@ AudioRefine is neither imported nor required. Audio-targeted sampling remains
 not prove frozen-context mask behavior in the installed H3 runtime. A native Core
 Euler/normal CPU smoke also executes the sampler factory and solver with a synthetic
 denoiser; checkpoint/GPU acceptance remains pending.
+# V3.9 custom per-chunk durations
+
+V3.9 appends **Chunk Timing** and **Custom Durations** without moving existing
+serialized controls. The default **Uniform** keeps Seconds per Chunk authoritative:
+Chunks = 3, Seconds per Chunk = 10 → 30 seconds. In **Custom Sequence**, Chunks = 3,
+Custom Durations = `10,8,10` → 28 seconds, with logical windows 0–10, 10–18,
+18–28 seconds. Whitespace and fractional seconds are supported under the existing
+4–30 second rule. Exactly one finite numeric duration per logical chunk is required;
+invalid custom input fails clearly. Switching modes preserves both inactive values.
+
+Requested logical timing is separate from native H3 physical frames. Continuation
+still compensates against cumulative targets and keeps the existing Continuity,
+overlap, masks and AV rules. Driving Audio and Follow Timeline retain their physical
+context/alignment slices. Finalize's existing exact-duration correction targets the
+resolved requested total; disabling that correction retains natural physical length.
+
+`10,8,10` has three physical groups. With eligible First/Last conditioning,
+`10,5,5` can have two: chunk 1 and the existing atomic 5s + 5s terminal pair.
+Arbitrary-duration terminal merging is unsupported. Reference selectors still use
+logical chunk numbers. Video Second Pass and Audio Refine retain timing metadata.
+
+Custom timing uses versioned additive plan/session metadata and distinct revision
+identity. Certified compatible prefixes can be imported into a new plan, stopping
+at the first incompatible physical group; Review/Takes remain lineage-strict.
+Existing media/reference/global contract changes may conservatively prevent reuse.
+Uniform emits no new timing identity fields. V3.8 and historical public controls
+remain unchanged. Older plugin versions do not understand custom plans: use this
+fork for custom runs; existing Uniform workflows remain compatible.

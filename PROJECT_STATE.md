@@ -1,5 +1,12 @@
 # Project State
 
+## V3.9 custom logical chunk timing — local implementation
+
+- Appended defaulted Uniform/Custom Sequence and Custom Durations widgets only to V3.9. Canonical timing retains cumulative seconds/requested frame boundaries, native cumulative compensation, versioned additive assembly/session metadata, and timing-aware revision/prefix identity. Uniform contracts contain no new timing fields. Workflow files, resolution, Fantastic, and Audio Refine implementation are untouched.
+- `10,8,10` produces groups `[1],[2],[3]`; FLF-eligible `10,5,5` produces `[1],[2,3]`, preserving the existing 5+5 terminal topology. Shared refinement context validation now accepts recorded source geometry after spatial Second Pass updates output geometry; no sampling/schema change.
+- Validation: final split suites 688 passed / 3 skipped; 48/48 Review lifecycle, 110 resolution variants plus custom timing/legacy serialization checks, and Reference Images frontend PASS. Syntax/native PackedLayout/all 14 registrations PASS. Uniform contract/revision hashes and fixture AV tensors match pre-feature source. Earlier combined run had two known CUDA-initialization ordering assertions; both pass isolated.
+- Custom Review plans preserve fractional frame phase when scoped. Source/media/global contract changes may conservatively prevent prefix import. Browser/GPU generation remains pending; Custom timing committed locally in its separate authorized commit, without push or external deployment.
+
 ## Group-aware Audio Refine — local implementation
 
 - Added public `H3ContinuumAudioRefineV39`, reusing selective Audio Only group execution, context reconstruction, Core AV packing, and plan geometry updates. Final video objects remain unchanged; zero denoise bypasses sampling. No AudioRefine dependency, sampler schema change, workflow edit, or external runtime deployment. Public exports now total 14.

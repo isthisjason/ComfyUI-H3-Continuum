@@ -69,6 +69,7 @@ class FollowVideoSource:
     target_height: int
     chunk_seconds: float
     combined_hash: str
+    chunk_timing: object = None
 
     @property
     def frame_count(self) -> int:
@@ -164,6 +165,7 @@ def prepare_follow_video_source(
     output_width: int,
     output_height: int,
     size_mode: str = REFERENCE_VIDEO_SIZE_EFFICIENT,
+    chunk_timing=None,
 ) -> FollowVideoSource:
     """Keep the full normalized source for future windows, without a GPU copy.
 
@@ -203,7 +205,7 @@ def prepare_follow_video_source(
     }
     return FollowVideoSource(
         normalized, shape, dtype, fingerprint, mode, width, height, seconds,
-        _canonical_hash(descriptor),
+        _canonical_hash(descriptor), chunk_timing,
     )
 
 

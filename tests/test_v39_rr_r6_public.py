@@ -62,7 +62,7 @@ def test_v39_has_one_typed_reference_input_and_v38_is_unchanged():
                    for index in range(1, 10))
     assert set(new["optional"]) == (set(old["optional"])
                                    - {"reference_image_1", "reference_image_2", "reference_image_3", "image_references", "reference_image_4", "reference_image_5"}
-                                   | {"reference_images"})
+                                   | {"reference_images", "chunk_timing", "custom_durations"})
     assert new["optional"]["reference_images"][0] == H3ContinuumReferenceImagesV39.RETURN_TYPES[0]
     assert public_nodes.NODE_CLASS_MAPPINGS["H3ContinuumReferenceImagesV39"] is H3ContinuumReferenceImagesV39
     assert tuple(H3ContinuumReferenceImagesV39.INPUT_TYPES()["optional"]) == tuple(

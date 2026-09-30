@@ -673,8 +673,15 @@ function compactValue(value, maximumFractionDigits = 1) {
 }
 
 function durationLabel(node, chunks = null) {
-    if (linkedInput(node, [CHUNKS_WIDGET, "chunk_seconds"])) {
+    if (linkedInput(node, [CHUNKS_WIDGET, "chunk_seconds"]) && !(node.comfyClass === V39_NODE_CLASS && findWidget(node, "chunk_timing")?.value === "Custom Sequence")) {
         return "From connected inputs";
+    }
+    if (node.comfyClass === V39_NODE_CLASS && findWidget(node, "chunk_timing")?.value === "Custom Sequence") {
+        if (linkedInput(node, [CHUNKS_WIDGET, "custom_durations", "chunk_timing"])) return "From connected inputs";
+        const values = String(findWidget(node, "custom_durations")?.value ?? "").split(",").map(value => value.trim() === "" ? NaN : Number(value));
+        const count = Number(chunks ?? findWidget(node, CHUNKS_WIDGET)?.value ?? 1);
+        if (values.length !== count || values.some(value => !Number.isFinite(value) || value < 4 || value > 30)) return "Check Custom Durations";
+        return `${compactValue(values.reduce((sum, value) => sum + value, 0))} seconds`;
     }
     const chunkCount = Number(chunks ?? findWidget(node, CHUNKS_WIDGET)?.value ?? 1);
     const seconds = Number(findWidget(node, "chunk_seconds")?.value || 5);
@@ -771,7 +778,8 @@ function readySummary(node) {
             detail: "Review Each Chunk must keep Base Seed unchanged between Queue runs.",
         };
     }
-    const duration = linkedInput(node, [CHUNKS_WIDGET, "chunk_seconds"])
+    const customTiming = node.comfyClass === V39_NODE_CLASS && findWidget(node, "chunk_timing")?.value === "Custom Sequence";
+    const duration = customTiming ? `Custom: ${durationLabel(node)}` : linkedInput(node, [CHUNKS_WIDGET, "chunk_seconds"])
         ? "Duration from connected inputs"
         : `${compactValue(chunks)} × ${compactValue(seconds)}s = ${durationLabel(node)}`;
     const output = node.comfyClass === V39_NODE_CLASS
@@ -979,6 +987,7 @@ function configureDurationInputSlots(node) {
     const names = new Map([
         [CHUNKS_WIDGET, FACADE_CHUNKS_WIDGET],
         ["chunk_seconds", FACADE_SECONDS_WIDGET],
+        ...(node.comfyClass === V39_NODE_CLASS ? [["chunk_timing", "Chunk Timing"], ["custom_durations", "Custom Durations"]] : []),
     ]);
     const getWidget = node.getWidgetFromSlot;
     const getSlot = node.getSlotFromWidget;
@@ -1082,6 +1091,10 @@ function configureIntuitiveV38Ux(node) {
         34,
     );
     const readyWidget = addFacadeInfoWidget(node, FACADE_READY_WIDGET, "ready", 62);
+    if (isV39) {
+        addFacadeProxyWidget(node, {type: "combo", name: "Chunk Timing", sourceName: "chunk_timing", options: {values: ["Uniform", "Custom Sequence"]}});
+        addFacadeProxyWidget(node, {type: "text", name: "Custom Durations", sourceName: "custom_durations"});
+    }
     configureDurationInputSlots(node);
 
     const outputFacade = addFacadeProxyWidget(node, {
@@ -1228,6 +1241,7 @@ function configureIntuitiveV38Ux(node) {
         FACADE_AUDIO_CONTINUITY_WIDGET,
         FACADE_CHUNKS_WIDGET,
         FACADE_SECONDS_WIDGET,
+        ...(isV39 ? ["Chunk Timing", "Custom Durations"] : []),
         FACADE_TOTAL_LENGTH_WIDGET,
         sizeFacadeName,
         ...(isV39 ? ["Aspect Ratio", "Resolved Size"] : []),
@@ -1367,6 +1381,16 @@ function configureIntuitiveV38Ux(node) {
         setWidgetVisible(findWidget(node, REGENERATE_WIDGET), advanced && storageEnabled);
         setWidgetVisible(findWidget(node, LEGACY_RUN_NAME_WIDGET), advanced && storageEnabled);
         setWidgetVisible(findWidget(node, REROLL_NONCE_WIDGET), advanced && explicitRegeneration);
+        if (isV39) {
+            hidePersistentWidget(findWidget(node, "chunk_timing"));
+            hidePersistentWidget(findWidget(node, "custom_durations"));
+            const custom = findWidget(node, "chunk_timing")?.value === "Custom Sequence";
+            const timingFacade = facadeProductionWidgets(node).find(widget => widget.name === "Chunk Timing");
+            const customFacade = facadeProductionWidgets(node).find(widget => widget.name === "Custom Durations");
+            setWidgetVisible(customFacade, custom || linkedInput(node, ["custom_durations", "chunk_timing"]));
+            setWidgetTooltip(timingFacade, "Uniform uses Seconds per Chunk; Custom Sequence uses one duration per logical chunk.");
+            setWidgetTooltip(customFacade, "Comma-separated durations, e.g. 10,8,10. Exactly Chunks values; each 4–30 seconds.");
+        }
         applyV38WidgetHelp(node);
         if (isV39) refreshV39ResolutionFacade(node);
         // This is the appended native widget, not another transient proxy.
@@ -1397,6 +1421,7 @@ function configureIntuitiveV38Ux(node) {
             ["audio_continuity", "__h3ContinuumFacadeAudioContinuity"],
             [CHUNKS_WIDGET, "__h3ContinuumFacadeChunks"],
             ["chunk_seconds", "__h3ContinuumFacadeSeconds"],
+            ...(isV39 ? [["chunk_timing", "__h3ContinuumTiming"], ["custom_durations", "__h3ContinuumDurations"]] : []),
             [SIZE_SOURCE_WIDGET, "__h3ContinuumFacadeSizeSource"],
             [RESOLUTION_PRESET_WIDGET, "__h3ContinuumFacadePreset"],
             [CUSTOM_MP_WIDGET, "__h3ContinuumFacadeCustomMp"],

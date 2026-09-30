@@ -82,6 +82,10 @@ def validate_assembly_plan_contract(plan: Mapping[str, Any]) -> None:
 
     target_frames = _strict_int("assembly_plan.target_frames", plan.get("target_frames"), 1)
     expected_target = int(round(len(chunks) * chunk_seconds * fps))
+    if "chunk_timing" in plan:
+        from .v3.chunk_timing import timing_from_contract
+        timing = timing_from_contract(plan["chunk_timing"], count=len(chunks))
+        expected_target = timing.target_frames
     if target_frames != expected_target:
         raise ValueError(
             "assembly_plan.target_frames does not match chunks * chunk_seconds * fps"

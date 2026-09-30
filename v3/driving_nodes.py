@@ -226,9 +226,10 @@ class H3ContinuumSamplerV34(H3ContinuumSamplerProduction):
         from ..reference_video import prepare_reference_video_source
         from ..temporal import align_frame_count_up
 
-        target_frames = round(
+        timing = kwargs.get("_chunk_timing")
+        target_frames = (timing.target_frames if timing is not None else round(
             int(kwargs["chunks"]) * float(kwargs["chunk_seconds"]) * FPS
-        )
+        ))
         source = prepare_driving_audio_source(
             driving_audio,
             audio_vae,
@@ -244,17 +245,22 @@ class H3ContinuumSamplerV34(H3ContinuumSamplerProduction):
                 output_width=int(kwargs["width"]),
                 output_height=int(kwargs["height"]),
                 size_mode=str(video_reference_size),
+                **({"chunk_timing": timing} if timing is not None else {}),
             )
         else:
             reference_video_source = prepare_reference_video_source(
                 reference_video_1,
                 target_frames=align_frame_count_up(
-                    int(round(float(kwargs["chunk_seconds"]) * FPS))
+                    int(round((timing.logical_chunk_seconds[0] if timing is not None else float(kwargs["chunk_seconds"])) * FPS))
                 ),
                 output_width=int(kwargs["width"]),
                 output_height=int(kwargs["height"]),
                 size_mode=str(video_reference_size),
             )
+        if timing is not None and reference_video_source is not None and video_reference_mode != "Follow Timeline":
+            from dataclasses import replace
+            sources = tuple(prepare_reference_video_source(reference_video_1, target_frames=align_frame_count_up(round(seconds * FPS)), output_width=int(kwargs["width"]), output_height=int(kwargs["height"]), size_mode=str(video_reference_size)) for seconds in timing.logical_chunk_seconds)
+            reference_video_source = replace(sources[0], group_sources=sources)
         outputs = super().run(
             reference_audio_1=reference_audio_1,
             reference_audio_vae=reference_audio_vae,
@@ -851,10 +857,17 @@ class H3ContinuumSamplerV39(H3ContinuumSamplerV38):
             {"display_name": "Reference Images (Optional)",
              "tooltip": "Connect H3 Continuum Reference Images V3.9; assign chunks there."},
         )
+        optional["chunk_timing"] = (("Uniform", "Custom Sequence"), {"default": "Uniform", "display_name": "Chunk Timing", "tooltip": "Uniform uses Seconds per Chunk. Custom Sequence uses one duration per logical chunk."})
+        optional["custom_durations"] = ("STRING", {"default": "", "display_name": "Custom Durations", "tooltip": "Comma-separated seconds, e.g. 10,8,10. Exactly Chunks values, each 4–30 seconds. Inactive values are preserved."})
         schema["optional"] = optional
         return schema
 
-    def run(self, reference_images=None, **kwargs):
+    def run(self, reference_images=None, chunk_timing="Uniform", custom_durations="", **kwargs):
+        from .chunk_timing import resolve_chunk_timing
+        timing = resolve_chunk_timing(kwargs.get("chunks", 3), kwargs.get("chunk_seconds", 5), chunk_timing, custom_durations)
+        # Uniform keeps the historical kwargs and all storage identities untouched.
+        if chunk_timing != "Uniform":
+            kwargs["_chunk_timing"] = timing
         # The public V3.9 schema owns a single Reference input. Stale API
         # keys must not create a second route around that input.
         for name in (

@@ -202,6 +202,7 @@ def _apply_review_decode_scope(
         ),
         chunks=int(configured_chunks),
         chunk_seconds=float(chunk_seconds),
+        **({"logical_chunk_seconds": [e["plan"]["logical_timing"]["seconds"] for e in entries]} if entries and "logical_timing" in entries[0]["plan"] else {}),
         prompt_hashes=[str(entry["prompt_hash"]) for entry in entries],
         timeline_video_source=timeline_video_source,
     )
@@ -626,6 +627,7 @@ class H3ContinuumSamplerV3:
             _diagnostic_continuation_policy=advanced_values[
                 "_diagnostic_continuation_policy"
             ],
+            **({"_chunk_timing": advanced_values["_chunk_timing"]} if advanced_values.get("_chunk_timing") is not None else {}),
             **clip_prompt_inputs,
         )
         if bool(capture_refine_context):
@@ -647,6 +649,7 @@ class H3ContinuumSamplerV3:
             ),
             chunks=configured_chunks,
             chunk_seconds=float(chunk_seconds),
+            **({"logical_chunk_seconds": [e["plan"]["logical_timing"]["seconds"] for e in entries]} if entries and "logical_timing" in entries[0]["plan"] else {}),
             prompt_hashes=[str(entry["prompt_hash"]) for entry in entries],
             timeline_video_source=timeline_video_source,
         )
@@ -1043,6 +1046,7 @@ class H3ContinuumSamplerProduction(H3ContinuumSamplerV3):
         reference_image_5=None,
         image_references=None,
         _reference_routing_settings=None,
+        _chunk_timing=None,
     ):
         runtime_started_at = time.perf_counter()
         from ..reference import prepare_reference_assets
@@ -1145,6 +1149,7 @@ class H3ContinuumSamplerProduction(H3ContinuumSamplerV3):
                 continuation_transport=str(continuation_transport),
                 max_new_physical_groups=max_new_physical_groups,
                 advanced={
+                    **({"_chunk_timing": _chunk_timing} if _chunk_timing is not None else {}),
                     "audio_continuity": bool(audio_continuity),
                     "diagnostics": diagnostics,
                     "reroll_from_chunk": regenerate_from,

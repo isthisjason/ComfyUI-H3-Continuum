@@ -171,6 +171,14 @@ def validate_session(session: dict[str, Any]) -> dict[str, Any]:
         )
     if int(session.get("width", 0)) <= 0 or int(session.get("height", 0)) <= 0:
         raise SessionValidationError("session dimensions are invalid")
+    if "chunk_timing" in (session.get("settings") or {}):
+        from ..v3.chunk_timing import timing_from_contract
+        try:
+            timing = timing_from_contract(session["settings"]["chunk_timing"])
+        except ValueError as exc:
+            raise SessionValidationError(f"invalid session chunk_timing: {exc}") from exc
+        if len(session.get("chunks", [])) > len(timing.logical_chunk_seconds):
+            raise SessionValidationError("session custom timing count is too short")
     if float(session.get("chunk_seconds", 0.0)) <= 0:
         raise SessionValidationError("session chunk_seconds is invalid")
     chunks = session.get("chunks")
@@ -179,6 +187,11 @@ def validate_session(session: dict[str, Any]) -> dict[str, Any]:
     previous_clip_index = None
     for index, entry in enumerate(chunks, start=1):
         validate_chunk_entry(entry)
+        logical = entry["plan"].get("logical_timing")
+        if "chunk_timing" in (session.get("settings") or {}) and logical is not None:
+            expected = {"seconds": timing.logical_chunk_seconds[index-1], "start_seconds": timing.cumulative_seconds[index-1], "start_frame": timing.requested_frame_boundaries[index-1], "stop_frame": timing.requested_frame_boundaries[index]}
+            if logical != expected:
+                raise SessionValidationError("session logical timing differs from its requested timing contract")
         if int(entry.get("sequence_index", index)) != index:
             raise SessionValidationError("session chunk sequence indices are not contiguous")
         clip_index = int(entry["plan"]["clip_index"])

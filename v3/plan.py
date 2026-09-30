@@ -60,6 +60,8 @@ def make_assembly_plan(
             }
         )
 
+    from .chunk_timing import timing_from_entries
+    timing = timing_from_entries(entries)
     result = {
         "magic": ASSEMBLY_PLAN_MAGIC,
         "schema_version": ASSEMBLY_PLAN_SCHEMA_VERSION,
@@ -67,10 +69,11 @@ def make_assembly_plan(
         "width": int(width),
         "height": int(height),
         "chunk_seconds": float(chunk_seconds),
-        "target_frames": int(round(len(chunks) * float(chunk_seconds) * FPS)),
+        "target_frames": timing.target_frames if timing is not None else int(round(len(chunks) * float(chunk_seconds) * FPS)),
         "preserve_final_frame": bool(preserve_final_frame),
         "chunks": chunks,
     }
+    if timing is not None: result["chunk_timing"] = timing.contract()
     return validate_assembly_plan(result)
 
 
@@ -249,6 +252,8 @@ def _attach_second_pass_contract(
         chunk_indices[index]: str(entry.get("prompt", ""))
         for index, entry in enumerate(logical_entries)
     }
+    durations = plan.get("chunk_timing", {}).get("logical_chunk_seconds")
+    duration_by_chunk = dict(zip(chunk_indices, durations)) if durations is not None else {}
     groups: list[dict[str, Any]] = []
     for group_id, (entry, decode_group) in enumerate(
         zip(physical_entries, decode_groups, strict=True)
@@ -263,7 +268,7 @@ def _attach_second_pass_contract(
         elif len(prompts) == 2 and bool(decode_group.get("terminal_merged")):
             physical_prompt, prompt_policy = _terminal_physical_prompt(
                 prompts,
-                chunk_seconds=chunk_seconds,
+                chunk_seconds=5.0 if "chunk_timing" in plan else chunk_seconds,
             )
         else:
             physical_prompt = "\n\n".join(prompts)
@@ -271,6 +276,7 @@ def _attach_second_pass_contract(
 
         groups.append(
             {
+                **({"logical_chunk_seconds": [duration_by_chunk[index] for index in logical_chunks]} if durations is not None else {}),
                 "group_id": group_id,
                 "logical_chunks": logical_chunks,
                 "physical_prompt": physical_prompt,
@@ -326,6 +332,8 @@ def prepare_physical_decode_entries(
     if len(logical_entries) < 2:
         raise ValueError("terminal physical decode requires two logical entries")
 
+    if "chunk_timing" in plan and any(abs(seconds - 5.0) > 1e-6 for seconds in plan["chunk_timing"]["logical_chunk_seconds"][-2:]):
+        raise AssemblyPlanError("terminal merged sampling currently requires two 5-second logical chunks")
     from ..v2.sequence import _terminal_pair_contract
 
     initial_pair = (
@@ -335,7 +343,7 @@ def prepare_physical_decode_entries(
     )
     contract = _terminal_pair_contract(
         initial_pair=initial_pair,
-        chunk_seconds=float(chunk_seconds),
+        chunk_seconds=5.0 if "chunk_timing" in plan else float(chunk_seconds),
     )
     first_entry = logical_entries[-2]
     second_entry = logical_entries[-1]

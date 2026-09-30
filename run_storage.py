@@ -186,7 +186,7 @@ def _review_contract_mismatches(stored: dict, current: dict) -> list[str]:
     # Match the inputs to _nonce_lineage_hash, not derived nonce/branch fields.
     for key in (
         "global", "chunk_count", "prompt_mode", "prompt_hashes",
-        "last_frame_hash", "timeline_video_chunk_contracts",
+        "last_frame_hash", "timeline_video_chunk_contracts", "chunk_timing",
     ):
         compare(stored.get(key), current.get(key), key)
     return result
@@ -755,6 +755,8 @@ def _apply_nonce_contract(
             "effective_reroll_nonce": int(effective_nonce) if affected else 0,
             "last_frame_hash": str(result["last_frame_hash"]) if number == int(result["chunk_count"]) else "",
         }
+        if "chunk_timing_groups" in result:
+            chunk_contract["chunk_timing"] = result["chunk_timing_groups"][position]
         if routed_groups is not None:
             chunk_contract["physical_group_reference_sha256"] = routed_by_chunk[number]
         timeline_chunks = result.get("timeline_video_chunk_contracts") or []
@@ -796,6 +798,8 @@ def _nonce_lineage_hash(
             else contract.get("timeline_video_chunk_contracts") or []
         ),
     }
+    if "chunk_timing" in contract:
+        identity["chunk_timing"] = contract["chunk_timing"]
     if "reference_group_contracts" in contract:
         identity["reference_group_hashes"] = [
             record["sha256"] for record in contract["reference_group_contracts"]
@@ -1045,6 +1049,11 @@ def build_sampling_contract(
             ),
         )
         contract["reference_group_contracts"] = routed_groups
+    if "chunk_timing" in prompt_plan:
+        from .v3.chunk_timing import timing_from_contract, timing_group_contracts
+        timing = timing_from_contract(prompt_plan["chunk_timing"], count=chunks)
+        contract["chunk_timing"] = timing.contract()
+        contract["chunk_timing_groups"] = timing_group_contracts(timing, terminal_merge=_terminal_merge_enabled(contract))
     lineage_sha256 = _nonce_lineage_hash(
         contract,
         timeline_video_chunk_contracts=timeline_chunk_contracts,
@@ -1072,6 +1081,38 @@ def build_sampling_contract(
     graph_safe = bool(upstream_graph_safe) if graph_authoritative else True
     return contract, model_safe and clip_safe and video_vae_safe and audio_vae_safe and driving_audio_vae_safe and sampler_safe and graph_safe, reasons
 
+
+
+def _timing_prefix_globals_match(stored, current):
+    left, right = dict(stored.get("global") or {}), dict(current.get("global") or {})
+    if "chunk_timing" in stored or "chunk_timing" in current:
+        # The unused uniform widget is not a custom timing dependency.
+        left.pop("chunk_seconds", None)
+        right.pop("chunk_seconds", None)
+    return _hash(left) == _hash(right)
+
+
+def _timing_chunk_equivalent(stored, current, position, *, requested_nonce):
+    if "chunk_timing" not in stored and "chunk_timing" not in current:
+        return False
+    if not _timing_prefix_globals_match(stored, current):
+        return False
+    from .v3.chunk_timing import timing_from_contract, timing_from_seconds, timing_group_contracts
+    def timing_group(contract):
+        timing = (timing_from_contract(contract["chunk_timing"]) if "chunk_timing" in contract
+                  else timing_from_seconds([contract["global"]["chunk_seconds"]] * contract["chunk_count"]))
+        return timing_group_contracts(timing, terminal_merge=_terminal_merge_enabled(contract))[position]
+    if timing_group(stored) != timing_group(current):
+        return False
+    requested = _apply_reroll_branch_contract(
+        current, boundary=int(stored.get("reroll_from_chunk", 0)),
+        requested_nonce=requested_nonce, effective_nonce=requested_nonce)
+    def payload(contract):
+        value = dict(contract["chunk_contracts"][position])
+        value.pop("global_hash", None)
+        value.pop("chunk_timing", None)
+        return value
+    return _hash(payload(stored)) == _hash(payload(requested))
 
 def revision_identity(contract: dict[str, Any]) -> tuple[str, str]:
     full = _hash(contract)
@@ -1772,7 +1813,7 @@ class RunStorageController:
         manifests = self._read_manifests()
         source_contract = manifest.get("contract") or {}
         _manifest_sampling_identity(manifest)
-        if _hash(source_contract.get("global")) != _hash(current_contract.get("global")):
+        if not _timing_prefix_globals_match(source_contract, current_contract):
             return [], []
         chain = self._manifest_provenance_chain(manifest, manifests)
         records = list(manifest.get("chunks") or [])
@@ -1816,7 +1857,7 @@ class RunStorageController:
                 requested_hashes = requested_by_producer[producer_id]
                 producer_records = producer.get("chunks") or []
                 if (position >= len(hashes) or position >= len(requested_hashes)
-                        or hashes[position] != requested_hashes[position]
+                        or (hashes[position] != requested_hashes[position] and not _timing_chunk_equivalent(producing, current_contract, position, requested_nonce=int(producing.get("effective_reroll_nonce", 0))))
                         or position >= len(producer_records)
                         or producer_records[position] != record):
                     compatible = False
@@ -2827,6 +2868,8 @@ class RunStorageController:
             reference_storage_plan=reference_storage_plan,
             accepted_chunks=len(best_entries),
         )
+        if "chunk_timing" in contract:
+            session_settings["chunk_timing"] = contract["chunk_timing"]
         return make_session(
             chunks=best_entries, width=int(width), height=int(height),
             chunk_seconds=float(chunk_seconds), identity_hash=str(identity_hash),
